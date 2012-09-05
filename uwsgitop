@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/python
 
 import socket
 import simplejson as json
@@ -10,10 +10,12 @@ import traceback
 
 need_reset = True
 
+
 def game_over():
     global need_reset
     if need_reset:
         curses.endwin()
+
 
 def exc_hook(type, value, tb):
     global need_reset
@@ -55,7 +57,7 @@ curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
 curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
 
 
-screen.timeout(freq*1000)
+screen.timeout(freq * 1000)
 atexit.register(game_over)
 
 try:
@@ -64,6 +66,7 @@ except:
     pass
 screen.clear()
 
+
 def reqcount(a, b):
     if a['requests'] > b['requests']:
         return -1
@@ -71,10 +74,11 @@ def reqcount(a, b):
         return 1
     return 0
 
+
 def calc_percent(tot, req):
     if tot == 0:
         return 0.0
-    return (100 *float(req))/float(tot)
+    return (100 * float(req)) / float(tot)
 
 while True:
 
@@ -82,7 +86,7 @@ while True:
 
     try:
         s = socket.socket(sfamily, socket.SOCK_STREAM)
-        s.connect( addr_tuple )
+        s.connect(addr_tuple)
 
         while True:
             data = s.recv(4096)
@@ -94,45 +98,44 @@ while True:
 
     dd = json.loads(js)
 
-
-    
     uversion = ''
     if 'version' in dd:
         uversion = '-' + dd['version']
 
     if not 'listen_queue' in dd:
-        dd['listen_queue'] = 0 
+        dd['listen_queue'] = 0
 
     cwd = ""
     if 'cwd' in dd:
-        cwd = "- cwd: %s" % dd['cwd'] 
+        cwd = "- cwd: %s" % dd['cwd']
 
     uid = ""
     if 'uid' in dd:
-        uid = "- uid: %d" % dd['uid'] 
+        uid = "- uid: %d" % dd['uid']
 
     gid = ""
     if 'gid' in dd:
-        gid = "- gid: %d" % dd['gid'] 
+        gid = "- gid: %d" % dd['gid']
 
     masterpid = ""
     if 'pid' in dd:
-        masterpid = "- masterpid: %d" % dd['pid'] 
+        masterpid = "- masterpid: %d" % dd['pid']
 
     screen.addstr(1, 0, "node: %s %s %s %s %s" % (socket.gethostname(), cwd, uid, gid, masterpid))
 
     if 'vassals' in dd:
         screen.addstr(0, 0, "uwsgi%s - %s - emperor: %s - tyrant: %d" % (uversion, time.ctime(), dd['emperor'], dd['emperor_tyrant']))
         vassal_spaces = max([len(v['id']) for v in dd['vassals']])
-        screen.addstr(2, 0, " VASSAL%s\tPID\t" % (' ' * (vassal_spaces-6)), curses.A_REVERSE)
+        screen.addstr(2, 0, " VASSAL%s\tPID\t" % (' ' * (vassal_spaces - 6)),
+                      curses.A_REVERSE)
         pos = 3
         for vassal in dd['vassals']:
             screen.addstr(pos, 0, " %s\t%d" % (vassal['id'].ljust(vassal_spaces), vassal['pid']))
             pos += 1
-    
+
     elif 'workers' in dd:
-        tot = sum( [worker['requests'] for worker in dd['workers']] )
-        tx = sum( [worker['tx'] for worker in dd['workers']] )
+        tot = sum([worker['requests'] for worker in dd['workers']])
+        tx = sum([worker['tx'] for worker in dd['workers']])
         screen.addstr(0, 0, "uwsgi%s - %s - req: %d - lq: %d - tx: %d" % (uversion, time.ctime(), tot, dd['listen_queue'], tx))
         screen.addstr(2, 0, " WID\t%\tPID\tREQ\tEXC\tSIG\tSTATUS\tAVG\tRSS\tVSZ\tTX\tRunT\t", curses.A_REVERSE)
         pos = 3
@@ -142,16 +145,16 @@ while True:
             sigs = 0
             wtx = worker['tx']
             if wtx > 9999999:
-                wtx = "%sM" % str(wtx / (1024*1024))
+                wtx = "%sM" % str(wtx / (1024 * 1024))
             else:
                 wtx = str(wtx)
 
-            wrunt = worker['running_time']/1000
+            wrunt = worker['running_time'] / 1000
             if wrunt > 9999999:
-                wrunt = "%sm" % str(wrunt / (1000*60))
+                wrunt = "%sm" % str(wrunt / (1000 * 60))
             else:
                 wrunt = str(wrunt)
-                
+
             color = curses.color_pair(0)
             if 'signals' in worker:
                 sigs = worker['signals']
@@ -164,10 +167,11 @@ while True:
             if worker['status'].startswith('sig'):
                 color = curses.color_pair(4)
             screen.addstr(pos, 0, " %d\t%.2f\t%d\t%d\t%d\t%d\t%s\t%dms\t%dM\t%dM\t%s\t%s" % (
-                worker['id'], calc_percent(tot, worker['requests']), worker['pid'], worker['requests'], worker['exceptions'], sigs, worker['status'],
-                worker['avg_rt']/1000, worker['rss']/1024/1024, worker['vsz']/1024/1024,
-                wtx, wrunt
-            ), color)
+                worker['id'], calc_percent(tot, worker['requests']),
+                worker['pid'], worker['requests'], worker['exceptions'], sigs,
+                worker['status'], worker['avg_rt'] / 1000,
+                worker['rss'] / 1024 / 1024, worker['vsz'] / 1024 / 1024, wtx,
+                wrunt), color)
             pos += 1
 
     screen.refresh()
@@ -176,5 +180,3 @@ while True:
     if screen.getch() == ord('q'):
         game_over()
         break
-
-
