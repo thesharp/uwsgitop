@@ -7,6 +7,12 @@ import time
 import atexit
 import sys
 import traceback
+import ConfigParser
+import os
+import re
+
+config = ConfigParser.ConfigParser()
+config_dir = "/etc/uwsgi.d"
 
 need_reset = True
 
@@ -28,9 +34,33 @@ sys.excepthook = exc_hook
 argc = len(sys.argv)
 
 if argc < 2:
-    raise Exception("You have to specify the uWSGI stats socket")
+    sys.exit("You should specify an app within %s directory" % config_dir)
 
-addr = sys.argv[1]
+if sys.argv[1] == "--list":
+    for i in os.listdir(config_dir):
+        if i.endswith(".ini"):
+            print re.sub(".ini", "", i)
+    sys.exit()
+
+if sys.argv[1] == "--help":
+    print """Usage: uwsgitop APP
+
+Try uwsgitop --list to list all applications"""
+    sys.exit()
+
+app = sys.argv[1]
+app_config = "%s/%s.ini" % (config_dir, app)
+
+if not os.path.isfile(app_config):
+    sys.exit("Application %s isn't in .ini format or doesn't exist" % app)
+
+config.read(app_config)
+
+if not config.has_option("uwsgi", "stats"):
+    sys.exit("Application %s doesn't have socket option" % app)
+
+addr = re.sub("%n", app, config.get("uwsgi", "stats"))
+
 sfamily = socket.AF_UNIX
 addr_tuple = addr
 if ':' in addr:
